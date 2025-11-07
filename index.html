@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MARKET PULSE - Analytics Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1420 100%);
+            color: #e0e7ff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .glass-card {
+            background: rgba(15, 20, 40, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            border-color: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(0, 255, 255, 0.2);
+        }
+        
+        .title-text {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            background: linear-gradient(90deg, #00ffff 0%, #00ccff 50%, #0099ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 14, 39, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .pulse-ring {
+            width: 100px;
+            height: 100px;
+            border: 4px solid #00ffff;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(0.95);
+                opacity: 1;
+            }
+        }
+        
+        select {
+            background: rgba(15, 20, 40, 0.8);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            color: #00ffff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        select:hover {
+            border-color: rgba(0, 255, 255, 0.6);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        
+        .metric-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            color: #00ffff;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, rgba(15, 20, 40, 0.95) 0%, rgba(26, 31, 58, 0.95) 100%);
+            margin: 10% auto;
+            padding: 30px;
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.5);
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .close {
+            color: #00ffff;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .close:hover {
+            color: #00ccff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: rgba(0, 255, 255, 0.1);
+            color: #00ffff;
+            padding: 12px;
+            text-align: left;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+            color: #cbd5e1;
+        }
+        
+        tr:hover {
+            background: rgba(0, 255, 255, 0.05);
+        }
+        
+        .feature-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            margin: 4px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .positive-badge {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+        
+        .negative-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="pulse-ring"></div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <div class="glass-card p-6 flex justify-between items-center">
+                <h1 class="title-text text-5xl">MARKET PULSE</h1>
+                <div>
+                    <label for="productSelect" class="text-cyan-300 mr-3 font-semibold">SELECT PRODUCT:</label>
+                    <select id="productSelect" class="w-64">
+                        <option>Loading...</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="glass-card p-6 text-center">
+                <div class="metric-label mb-2">Reviews Analyzed</div>
+                <div class="metric-value" id="totalReviews">0</div>
+            </div>
+            <div class="glass-card p-6 text-center">
+                <div class="metric-label mb-2">Positive Sentiment</div>
+                <div class="metric-value" id="positivePct">0%</div>
+            </div>
+            <div class="glass-card p-6 text-center">
+                <div class="metric-label mb-2">Negative Reviews</div>
+                <div class="metric-value" id="negativeCount">0</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="glass-card p-6">
+                <h2 class="text-2xl font-bold text-cyan-300 mb-4">Sentiment Breakdown</h2>
+                <div id="pieChart"></div>
+            </div>
+            <div class="glass-card p-6">
+                <h2 class="text-2xl font-bold text-cyan-300 mb-4">All Product Sentiment Scores</h2>
+                <div id="barChart"></div>
+            </div>
+        </div>
+
+        <div class="glass-card p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-cyan-300">Product Emotion Map</h2>
+                <div>
+                    <label for="mapMetricSelect" class="text-cyan-300 mr-3 font-semibold">METRIC:</label>
+                    <select id="mapMetricSelect">
+                        <option value="sentiment_score">Average Sentiment</option>
+                        <option value="joy">Joy</option>
+                        <option value="anger">Anger</option>
+                        <option value="sadness">Sadness</option>
+                        <option value="fear">Fear</option>
+                        <option value="surprise">Surprise</option>
+                        <option value="trust">Trust</option>
+                        <option value="anticipation">Anticipation</option>
+                        <option value="disgust">Disgust</option>
+                    </select>
+                </div>
+            </div>
+            <div id="mapChart"></div>
+        </div>
+
+        <div class="glass-card p-6">
+            <h2 class="text-2xl font-bold text-cyan-300 mb-4">Raw Review Data Sample</h2>
+            <div style="max-height: 500px; overflow-y: auto;">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Country</th>
+                            <th>Review</th>
+                            <th>Score</th>
+                            <th>Category</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="recommendationModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="title-text text-3xl mb-6">Product Analysis</h2>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentMapData = [];
+        let currentProduct = 'All Products';
+
+        async function loadProducts() {
+            try {
+                const response = await fetch('/api/products');
+                const products = await response.json();
+                const select = document.getElementById('productSelect');
+                select.innerHTML = products.map(p => `<option value="${p}">${p}</option>`).join('');
+                loadData('All Products');
+            } catch (error) {
+                console.error('Error loading products:', error);
+            }
+        }
+
+        async function loadData(productName) {
+            currentProduct = productName;
+            try {
+                const response = await fetch(`/api/data/${encodeURIComponent(productName)}`);
+                const data = await response.json();
+                
+                updateMetrics(data.metrics);
+                updatePieChart(data.pieChartData);
+                updateBarChart(data.barChartData);
+                currentMapData = data.mapChartData;
+                updateMapChart();
+                updateTable(data.rawDataSample);
+                
+                document.getElementById('loadingOverlay').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
+
+        function updateMetrics(metrics) {
+            document.getElementById('totalReviews').textContent = metrics.total_reviews.toLocaleString();
+            document.getElementById('positivePct').textContent = metrics.positive_pct.toFixed(1) + '%';
+            document.getElementById('negativeCount').textContent = metrics.negative_count.toLocaleString();
+        }
+
+        function updatePieChart(data) {
+            const colors = {
+                'Positive': '#4ade80',
+                'Negative': '#f87171',
+                'Neutral': '#94a3b8'
+            };
+            
+            const pieData = [{
+                values: data.values,
+                labels: data.labels,
+                type: 'pie',
+                marker: {
+                    colors: data.labels.map(label => colors[label] || '#64748b')
+                },
+                textinfo: 'label+percent',
+                textfont: { color: '#e0e7ff', size: 14 },
+                hole: 0.4
+            }];
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e7ff', family: 'Rajdhani' },
+                showlegend: true,
+                legend: { font: { color: '#e0e7ff' } },
+                margin: { t: 20, b: 20, l: 20, r: 20 }
+            };
+
+            Plotly.newPlot('pieChart', pieData, layout, {responsive: true, displayModeBar: false});
+        }
+
+        function updateBarChart(data) {
+            const barData = [{
+                x: data.products,
+                y: data.scores,
+                type: 'bar',
+                marker: {
+                    color: data.scores.map(score => 
+                        score > 0.1 ? '#4ade80' : (score < -0.1 ? '#f87171' : '#94a3b8')
+                    ),
+                    line: { color: '#00ffff', width: 1 }
+                }
+            }];
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e7ff', family: 'Rajdhani' },
+                xaxis: { 
+                    tickfont: { color: '#94a3b8' },
+                    gridcolor: 'rgba(0, 255, 255, 0.1)'
+                },
+                yaxis: { 
+                    title: 'Average Sentiment Score',
+                    tickfont: { color: '#94a3b8' },
+                    gridcolor: 'rgba(0, 255, 255, 0.1)',
+                    titlefont: { color: '#00ffff' }
+                },
+                margin: { t: 20, b: 80, l: 60, r: 20 }
+            };
+
+            Plotly.newPlot('barChart', barData, layout, {responsive: true, displayModeBar: false});
+        }
+
+        function updateMapChart() {
+            const metric = document.getElementById('mapMetricSelect').value;
+            
+            const mapData = [{
+                type: 'choropleth',
+                locationmode: 'ISO-3',
+                locations: currentMapData.map(d => d.country),
+                z: currentMapData.map(d => d[metric]),
+                text: currentMapData.map(d => d.country),
+                colorscale: metric === 'sentiment_score' ? 
+                    [[0, '#f87171'], [0.5, '#94a3b8'], [1, '#4ade80']] :
+                    [[0, '#1e293b'], [1, '#00ffff']],
+                colorbar: {
+                    title: metric.replace('_', ' ').toUpperCase(),
+                    titlefont: { color: '#00ffff' },
+                    tickfont: { color: '#e0e7ff' }
+                }
+            }];
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                geo: {
+                    bgcolor: 'rgba(0,0,0,0)',
+                    showframe: false,
+                    showcoastlines: true,
+                    coastlinecolor: '#00ffff',
+                    projection: { type: 'natural earth' },
+                    lakecolor: 'rgba(0,0,0,0)',
+                    landcolor: 'rgba(15, 20, 40, 0.5)',
+                    showland: true
+                },
+                margin: { t: 20, b: 20, l: 20, r: 20 }
+            };
+
+            Plotly.newPlot('mapChart', mapData, layout, {responsive: true, displayModeBar: false});
+            
+            document.getElementById('mapChart').on('plotly_click', function(data) {
+                if (data.points && data.points.length > 0) {
+                    const country = data.points[0].location;
+                    handleMapClick(country);
+                }
+            });
+        }
+
+        function updateTable(data) {
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = data.map(row => `
+                <tr>
+                    <td>${row.product}</td>
+                    <td>${row.country}</td>
+                    <td>${row.review.substring(0, 100)}...</td>
+                    <td>${row.sentiment_score.toFixed(2)}</td>
+                    <td><span class="feature-badge ${row.sentiment_category === 'Positive' ? 'positive-badge' : (row.sentiment_category === 'Negative' ? 'negative-badge' : '')}">${row.sentiment_category}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        async function handleMapClick(country) {
+            if (currentProduct === 'All Products') {
+                showModal('<p class="text-yellow-400 text-lg">⚠️ Please select a specific product to view recommendations.</p>');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/recommendation?product=${encodeURIComponent(currentProduct)}&country=${country}`);
+                const data = await response.json();
+                
+                let content = `
+                    <h3 class="text-xl font-bold text-cyan-300 mb-4">${currentProduct} in ${country}</h3>
+                `;
+                
+                if (data.analysis.top_positive.length > 0) {
+                    content += `
+                        <div class="mb-4">
+                            <p class="text-green-400 font-semibold mb-2">✓ Top Positive Features:</p>
+                            <div>
+                                ${data.analysis.top_positive.map(f => `<span class="feature-badge positive-badge">${f.replace('_', ' ')}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (data.analysis.top_negative.length > 0) {
+                    content += `
+                        <div class="mb-4">
+                            <p class="text-red-400 font-semibold mb-2">✗ Top Negative Features:</p>
+                            <div>
+                                ${data.analysis.top_negative.map(f => `<span class="feature-badge negative-badge">${f.replace('_', ' ')}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                content += `
+                    <div class="mt-6 p-4 rounded-lg" style="background: rgba(0, 255, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.3);">
+                        <p class="text-cyan-300 font-semibold mb-2">💡 Recommended Alternative:</p>
+                        <p class="text-2xl font-bold text-white">${data.recommendation}</p>
+                    </div>
+                `;
+                
+                showModal(content);
+            } catch (error) {
+                console.error('Error loading recommendation:', error);
+                showModal('<p class="text-red-400">Error loading recommendation data.</p>');
+            }
+        }
+
+        function showModal(content) {
+            document.getElementById('modalContent').innerHTML = content;
+            document.getElementById('recommendationModal').style.display = 'block';
+        }
+
+        document.getElementById('productSelect').addEventListener('change', (e) => {
+            loadData(e.target.value);
+        });
+
+        document.getElementById('mapMetricSelect').addEventListener('change', () => {
+            updateMapChart();
+        });
+
+        document.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('recommendationModal').style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('recommendationModal');
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        loadProducts();
+    </script>
+</body>
+</html>
