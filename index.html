@@ -266,6 +266,14 @@
                 <div id="barChart"></div>
             </div>
         </div>
+        
+        <!-- NEW FEATURE-LEVEL SENTIMENT CARD -->
+        <div class="grid grid-cols-1 gap-6 mb-8">
+            <div class="glass-card p-6">
+                <h2 class="text-2xl font-bold text-cyan-300 mb-4">Feature-Level Sentiment Analysis</h2>
+                <div id="featureSentimentChart"></div>
+            </div>
+        </div>
 
         <div class="glass-card p-6 mb-8">
             <div class="flex justify-between items-center mb-4">
@@ -343,11 +351,22 @@
                 currentMapData = data.mapChartData;
                 updateMapChart();
                 updateTable(data.rawDataSample);
+                await loadFeatureSentiment(productName);
                 
                 document.getElementById('loadingOverlay').style.display = 'none';
             } catch (error) {
                 console.error('Error loading data:', error);
                 document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        }
+
+        async function loadFeatureSentiment(productName) {
+            try {
+                const response = await fetch(`/api/feature_sentiment/${encodeURIComponent(productName)}`);
+                const data = await response.json();
+                updateFeatureSentimentChart(data);
+            } catch (error) {
+                console.error('Error loading feature sentiment:', error);
             }
         }
 
@@ -419,6 +438,47 @@
             };
 
             Plotly.newPlot('barChart', barData, layout, {responsive: true, displayModeBar: false});
+        }
+
+        function updateFeatureSentimentChart(data) {
+            // Reverse arrays for highest score on top in horizontal bar chart
+            const features = data.features.map(f => f.replace('_', ' ')).reverse();
+            const scores = data.scores.reverse();
+
+            const barData = [{
+                x: scores,
+                y: features,
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: scores.map(score => 
+                        score > 0.1 ? '#4ade80' : (score < -0.1 ? '#f87171' : '#94a3b8')
+                    ),
+                    line: { color: '#00ffff', width: 1 }
+                },
+                hovertemplate: '<b>%{y}</b>: %{x:.2f}<extra></extra>'
+            }];
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e7ff', family: 'Rajdhani' },
+                xaxis: { 
+                    title: 'Average Sentiment Score',
+                    tickfont: { color: '#94a3b8' },
+                    gridcolor: 'rgba(0, 255, 255, 0.1)',
+                    zerolinecolor: '#00ffff',
+                    range: [-1, 1] // Fixed range for sentiment
+                },
+                yaxis: { 
+                    tickfont: { color: '#94a3b8' },
+                    automargin: true 
+                },
+                margin: { t: 20, b: 60, l: 120, r: 20 },
+                height: Math.max(400, features.length * 40) // Dynamic height based on number of features
+            };
+
+            Plotly.newPlot('featureSentimentChart', barData, layout, {responsive: true, displayModeBar: false});
         }
 
         function updateMapChart() {
