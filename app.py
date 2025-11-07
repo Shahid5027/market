@@ -284,6 +284,7 @@ def get_data(product_name):
         'values': list(sentiment_counts.values())
     }
     
+    # Bar chart data: Average sentiment per product (always using all reviews for context)
     bar_data = df_reviews.groupby('product')['sentiment_score'].mean().to_dict()
     bar_chart_data = {
         'products': list(bar_data.keys()),
@@ -315,6 +316,27 @@ def get_data(product_name):
         'mapChartData': map_data,
         'rawDataSample': sample_data
     })
+
+@app.route('/api/feature_sentiment/<product_name>')
+def get_feature_sentiment(product_name):
+    """Return feature-level sentiment analysis for a given product or all products."""
+    
+    if product_name == 'All Products':
+        filtered_df = df_reviews
+    else:
+        filtered_df = df_reviews[df_reviews['product'] == product_name]
+    
+    # Explode the list of features into separate rows
+    feature_df = filtered_df.explode('features_mentioned')
+    
+    # Group by feature and calculate average sentiment
+    feature_sentiment = feature_df.groupby('features_mentioned')['sentiment_score'].mean().sort_values(ascending=False).to_dict()
+    
+    return jsonify({
+        'features': list(feature_sentiment.keys()),
+        'scores': [round(score, 4) for score in feature_sentiment.values()]
+    })
+
 
 @app.route('/api/recommendation')
 def get_recommendation():
